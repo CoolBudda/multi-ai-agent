@@ -109,6 +109,26 @@ If a memory field required for agent execution is absent or null, the agent must
 
 ---
 
+## Infrastructure (Terraform)
+
+You are working in a spec-driven Terraform repository.
+
+Rules:
+- Always follow `plans/` before writing code.
+- Never invent AWS resources not present in a spec under `specs/`.
+- Terraform must be modular under `agenterrafrom/modules/`.
+- Changes must be minimal and deterministic.
+- All fixes must be patch-based, not rewrites.
+
+### Conventions
+- One module per AWS service domain (e.g., `modules/vpc`, `modules/dynamodb`, `modules/ecs`).
+- Each module exposes typed `variables.tf` and `outputs.tf`.
+- Environment compositions live under `agenterrafrom/environments/<env>/`.
+- Sensitive values must never be committed in plaintext; reference Secrets Manager ARNs or use a secrets backend.
+- `terraform validate` and `terraform plan` must pass before any merge.
+
+---
+
 ## Frontend
 
 ### Stack

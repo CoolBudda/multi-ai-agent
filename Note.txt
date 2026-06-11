@@ -1,0 +1,40 @@
+
+
+requirements.md
+      ↓
+/PLAN
+      ↓
+plans/feature-plan.md
+      ↓
+/TEST
+      ↓
+tests/
+      ↓
+pytest
+      ↓
+RED
+      ↓
+/GEN
+      ↓
+implementation
+      ↓
+pytest
+      ↓
+GREEN
+      ↓
+/FIX (if needed)
+      ↓
+pytest
+      ↓
+GREEN
+      ↓
+/REVIEW
+      ↓
+merge
+
+
+
+
+companion_agent.py
+state.py
+test_companion_agent.py
