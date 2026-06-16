@@ -172,3 +172,8 @@ src/
 - **Vitest + React Testing Library** — unit and component tests; mirror source structure under `__tests__/`.
 - **Playwright** — end-to-end tests under `e2e/`; cover critical user flows (schedule meeting, search flights, etc.).
 - Avoid testing implementation details; test user-visible behavior.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
