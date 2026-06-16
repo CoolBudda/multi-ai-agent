@@ -5,7 +5,7 @@ from typing import Callable
 from uuid import uuid4
 
 from src.models.events import build_routing_record_lifecycle_event, now_iso
-from src.models.state import RoutingRecord, SupportedDomain
+from src.models.state import RoutingDecision, RoutingRecord, SupportedDomain
 
 
 @dataclass(slots=True)
@@ -18,6 +18,7 @@ class RoutingRecordService:
         *,
         request_id: str,
         routed_to: SupportedDomain,
+        routing_decision: RoutingDecision | None = None,
         user_message: str,
     ) -> tuple[RoutingRecord, dict[str, object]]:
         timestamp = now_iso()
@@ -27,6 +28,7 @@ class RoutingRecordService:
             "entry_path": "orchestrator",
             "initial_handler": "orchestrator",
             "routed_to": routed_to,
+            "routing_decision": routing_decision,
             "status": "failed",
             "failure_code": None,
             "rejection_code": None,

@@ -4,7 +4,13 @@ from typing import Any, Literal, TypedDict
 
 
 SupportedDomain = Literal["calendar", "travel", "dining", "news", "companion"]
+SupportedSpecialistDomain = Literal["calendar", "travel", "dining", "news"]
 RoutingStatus = Literal["succeeded", "failed", "rejected"]
+RoutingReasonCode = Literal[
+	"highest_above_threshold",
+	"tie_break_selected",
+	"below_threshold_fallback",
+]
 
 
 class UserPreferences(TypedDict, total=False):
@@ -61,13 +67,35 @@ class OrchestratorRequest(TypedDict):
 	metadata: dict[str, Any]
 
 
+class CandidateScore(TypedDict):
+	domain: SupportedDomain
+	confidence: float
+
+
+class RoutingPolicySnapshot(TypedDict):
+	specialist_threshold: float
+	tie_window: float
+	precedence_order: list[SupportedSpecialistDomain]
+
+
+class RoutingRationale(TypedDict):
+	threshold: float
+	tie_window: float
+	top_candidates: list[CandidateScore]
+	reason_code: RoutingReasonCode
+	tie_break_winner: SupportedDomain | None
+
+
 class RoutingDecision(TypedDict):
 	request_id: str
-	initial_handler: Literal["orchestrator"]
-	target_domain: SupportedDomain
-	confidence: float
-	fallback_applied: bool
-	rationale: str
+	selected_domain: SupportedDomain
+	selected_confidence: float
+	threshold_passed: bool
+	tie_detected: bool
+	tie_resolved_by_precedence: bool
+	fallback_to_companion: bool
+	rationale: RoutingRationale
+	policy_snapshot: RoutingPolicySnapshot
 	decided_at: str
 
 
@@ -77,6 +105,7 @@ class RoutingRecord(TypedDict):
 	entry_path: Literal["orchestrator"]
 	initial_handler: Literal["orchestrator"]
 	routed_to: SupportedDomain
+	routing_decision: RoutingDecision | None
 	status: RoutingStatus
 	failure_code: str | None
 	rejection_code: str | None
@@ -89,6 +118,13 @@ class OrchestratorResponse(TypedDict):
 	request_id: str
 	initial_handler: Literal["orchestrator"]
 	routed_to: SupportedDomain
+	routing_record_id: str
+	selected_domain: SupportedDomain
+	fallback_to_companion: bool
+	threshold_passed: bool
+	tie_detected: bool
+	rationale: RoutingRationale
+	routing_decision: RoutingDecision
 	status: Literal["succeeded", "failed"]
 	response: dict[str, Any]
 	routing_record: RoutingRecord

@@ -47,11 +47,14 @@ class DomainActionRejectedEvent(TypedDict):
 
 class RoutingDecisionComputedEvent(TypedDict):
 	event_name: Literal["orchestrator.intent.detected"]
+	request_id: str
+	selected_domain: SupportedDomain
 	decision: RoutingDecision
 
 
 class RoutingRecordLifecycleEvent(TypedDict):
 	event_name: str
+	action: Literal["created", "updated"]
 	record: RoutingRecord
 
 
@@ -120,6 +123,8 @@ def build_routing_decision_computed_event(
 ) -> RoutingDecisionComputedEvent:
 	return {
 		"event_name": "orchestrator.intent.detected",
+		"request_id": decision["request_id"],
+		"selected_domain": decision["selected_domain"],
 		"decision": decision,
 	}
 
@@ -131,7 +136,8 @@ def build_routing_record_lifecycle_event(
 	status: Literal["succeeded", "failed", "rejected"],
 ) -> RoutingRecordLifecycleEvent:
 	return {
-		"event_name": f"orchestrator.routing_record.{action}.{status}",
+		"event_name": f"orchestrator.routing_record.{status}",
+		"action": action,
 		"record": record,
 	}
 

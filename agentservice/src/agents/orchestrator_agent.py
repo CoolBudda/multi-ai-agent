@@ -3,9 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.models.events import build_routing_decision_computed_event, now_iso
-from src.models.state import OrchestratorRequest, RoutingDecision, SupportedDomain
-
-DEFAULT_CONFIDENCE_THRESHOLD = 0.6
+from src.models.routing import default_routing_policy, resolve_routing
+from src.models.state import CandidateScore, OrchestratorRequest, RoutingDecision, SupportedDomain
 
 _DOMAIN_PATTERNS: dict[SupportedDomain, tuple[str, ...]] = {
 	"calendar": ("meeting", "schedule", "availability", "calendar"),
@@ -25,23 +24,32 @@ class OrchestratorDispatchError(RuntimeError):
 def compute_routing_decision(
 	request: OrchestratorRequest,
 	*,
-	confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
+	confidence_threshold: float | None = None,
 ) -> tuple[RoutingDecision, dict[str, object]]:
 	message = request["message"].lower()
-	target_domain, confidence, rationale = _detect_target_domain(message)
-	fallback_applied = confidence < confidence_threshold
+	policy = default_routing_policy()
+	if confidence_threshold is not None:
+		policy["specialist_threshold"] = confidence_threshold
 
-	if fallback_applied:
-		target_domain = "companion"
-		rationale = "No specialist confidence exceeded threshold; defaulted to companion."
+	candidates = _score_supported_domains(message)
+	resolution = resolve_routing(candidates, policy=policy)
 
 	decision: RoutingDecision = {
 		"request_id": request["request_id"],
-		"initial_handler": "orchestrator",
-		"target_domain": target_domain,
-		"confidence": confidence,
-		"fallback_applied": fallback_applied,
-		"rationale": rationale,
+		"selected_domain": resolution["selected_domain"],
+		"selected_confidence": resolution["selected_confidence"],
+		"threshold_passed": resolution["threshold_passed"],
+		"tie_detected": resolution["tie_detected"],
+		"tie_resolved_by_precedence": resolution["tie_resolved_by_precedence"],
+		"fallback_to_companion": resolution["fallback_to_companion"],
+		"rationale": {
+			"threshold": policy["specialist_threshold"],
+			"tie_window": policy["tie_window"],
+			"top_candidates": resolution["top_candidates"],
+			"reason_code": resolution["reason_code"],
+			"tie_break_winner": resolution["tie_break_winner"],
+		},
+		"policy_snapshot": policy,
 		"decided_at": now_iso(),
 	}
 	return decision, build_routing_decision_computed_event(decision)
@@ -60,22 +68,19 @@ def dispatch_to_target_domain(
 		)
 
 	return {
-		"domain": decision["target_domain"],
-		"text": f"Handled by {decision['target_domain']} for request {request['request_id']}.",
+		"domain": decision["selected_domain"],
+		"text": f"Handled by {decision['selected_domain']} for request {request['request_id']}.",
 	}
 
 
-def _detect_target_domain(message: str) -> tuple[SupportedDomain, float, str]:
-	scored: list[tuple[SupportedDomain, float]] = []
+def _score_supported_domains(message: str) -> list[CandidateScore]:
+	scored: list[CandidateScore] = []
 	for domain, patterns in _DOMAIN_PATTERNS.items():
 		if not patterns:
 			continue
-		score = sum(1.0 for pattern in patterns if pattern in message)
-		if score > 0:
-			scored.append((domain, min(0.95, 0.35 + (score * 0.25))))
+		hit_count = sum(1 for pattern in patterns if pattern in message)
+		confidence = 0.0 if hit_count == 0 else min(0.95, 0.40 + (hit_count * 0.25))
+		scored.append({"domain": domain, "confidence": confidence})
 
-	if not scored:
-		return "companion", 0.3, "No domain-specific signal detected."
-
-	top_domain, top_score = sorted(scored, key=lambda item: item[1], reverse=True)[0]
-	return top_domain, top_score, f"Detected {top_domain} intent by keyword signals."
+	# Companion is always selected via policy fallback, never scored as a specialist candidate.
+	return scored

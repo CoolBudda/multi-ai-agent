@@ -32,7 +32,8 @@ class OrchestratorGraph:
 		)
 		self.routing_service.create_open_record(
 			request_id=request["request_id"],
-			routed_to=decision["target_domain"],
+			routed_to=decision["selected_domain"],
+			routing_decision=decision,
 			user_message="Request accepted through orchestrator.",
 		)
 
@@ -51,7 +52,14 @@ class OrchestratorGraph:
 			return {
 				"request_id": request["request_id"],
 				"initial_handler": "orchestrator",
-				"routed_to": decision["target_domain"],
+				"routed_to": decision["selected_domain"],
+				"routing_record_id": record["record_id"],
+				"selected_domain": decision["selected_domain"],
+				"fallback_to_companion": decision["fallback_to_companion"],
+				"threshold_passed": decision["threshold_passed"],
+				"tie_detected": decision["tie_detected"],
+				"rationale": decision["rationale"],
+				"routing_decision": decision,
 				"status": "failed",
 				"response": build_downstream_failure_payload(
 					request_id=request["request_id"],
@@ -67,7 +75,14 @@ class OrchestratorGraph:
 		return {
 			"request_id": request["request_id"],
 			"initial_handler": "orchestrator",
-			"routed_to": decision["target_domain"],
+			"routed_to": decision["selected_domain"],
+			"routing_record_id": record["record_id"],
+			"selected_domain": decision["selected_domain"],
+			"fallback_to_companion": decision["fallback_to_companion"],
+			"threshold_passed": decision["threshold_passed"],
+			"tie_detected": decision["tie_detected"],
+			"rationale": decision["rationale"],
+			"routing_decision": decision,
 			"status": "succeeded",
 			"response": domain_response,
 			"routing_record": record,
