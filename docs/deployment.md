@@ -292,6 +292,21 @@ Log every:
 
 Never log: raw message content, API credentials, user PII.
 
+### Routing Record Audit Checks
+
+Run these checks for each release candidate:
+
+1. Validate accepted ingress requests always have routing records with `initial_handler=orchestrator`.
+2. Validate direct specialist invocation attempts return `403` and create rejected routing records with `rejection_code=direct_specialist_access_denied`.
+3. Validate downstream failure scenarios preserve routing records with `status=failed` and a non-empty `failure_code`.
+
+Recommended validation commands:
+
+```bash
+cd agentservice
+pytest tests/workflows/test_orchestrator_ingress.py tests/workflows/test_direct_specialist_access.py tests/workflows/test_orchestrator_failure_records.py -q
+```
+
 ### Metrics (CloudWatch)
 
 | Metric | Unit | Alarm threshold |

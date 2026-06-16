@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+	"orchestrator_ingress: orchestrator ingress contract and routing tests",
+	"direct_specialist_denial: direct specialist access denial tests",
+	"routing_records: orchestrator routing record persistence tests",
+	"sc001: success criteria SC-001 validation tests",
+	"sc002: success criteria SC-002 validation tests",
+	"sc003: success criteria SC-003 validation tests",
+	"sc004: success criteria SC-004 validation tests",
+]

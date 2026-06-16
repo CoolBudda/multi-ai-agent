@@ -216,3 +216,22 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node / frontend
+node_modules/
+.next/
+webapp/.next/
+webapp/out/
+
+# Terraform
+.terraform/
+*.tfstate*
+*.tfvars
+
+# Universal
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

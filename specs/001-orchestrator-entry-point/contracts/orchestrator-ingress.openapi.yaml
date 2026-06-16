@@ -1,0 +1,221 @@
+openapi: 3.1.0
+info:
+  title: Personal Assistant Orchestrator Ingress API
+  version: 0.1.0
+  description: >-
+    Contract enforcing orchestrator-first ingress and direct specialist access rejection.
+servers:
+  - url: https://api.example.com
+paths:
+  /v1/assistant/requests:
+    post:
+      summary: Submit a client assistant request through orchestrator
+      operationId: submitAssistantRequest
+      tags: [orchestrator]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrchestratorRequest'
+      responses:
+        '200':
+          description: Request accepted and processed through orchestrator routing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrchestratorResponse'
+              examples:
+                routed_calendar:
+                  summary: Calendar route
+                  value:
+                    request_id: req-100
+                    initial_handler: orchestrator
+                    routed_to: calendar
+                    status: succeeded
+                    response:
+                      domain: calendar
+                      text: Handled by calendar for request req-100.
+                    routing_record:
+                      request_id: req-100
+                      entry_path: orchestrator
+                      initial_handler: orchestrator
+                      routed_to: calendar
+                      status: succeeded
+                      created_at: '2026-06-16T10:00:00Z'
+                low_confidence_fallback:
+                  summary: Low-confidence fallback to Companion
+                  value:
+                    request_id: req-101
+                    initial_handler: orchestrator
+                    routed_to: companion
+                    status: succeeded
+                    response:
+                      domain: companion
+                      text: Handled by companion for request req-101.
+                    routing_record:
+                      request_id: req-101
+                      entry_path: orchestrator
+                      initial_handler: orchestrator
+                      routed_to: companion
+                      status: succeeded
+                      created_at: '2026-06-16T10:00:00Z'
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                malformed:
+                  value:
+                    error_code: malformed_request
+                    message: Request body must be a non-empty JSON object.
+                    request_id: req-400
+        '422':
+          description: Incomplete request payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_fields:
+                  value:
+                    error_code: incomplete_request
+                    message: 'Missing required fields: session_id'
+                    request_id: req-422
+                empty_message:
+                  value:
+                    error_code: incomplete_request
+                    message: Field 'message' must be a non-empty string.
+                    request_id: req-422b
+        '503':
+          description: Downstream processing failed after orchestrator intake
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                downstream_failed:
+                  value:
+                    error_code: orchestrator.dispatch.failed
+                    message: The request entered through the Orchestrator but could not be completed. Please retry.
+                    request_id: req-503
+  /v1/agents/{agent}/invoke:
+    post:
+      summary: Direct specialist invocation attempt (forbidden)
+      operationId: rejectDirectSpecialistInvocation
+      tags: [orchestrator-governance]
+      parameters:
+        - in: path
+          name: agent
+          required: true
+          schema:
+            type: string
+            enum: [calendar, travel, dining, news, companion]
+      responses:
+        '403':
+          description: Direct specialist access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectAccessDeniedResponse'
+              examples:
+                direct_denied:
+                  value:
+                    error_code: direct_specialist_access_denied
+                    message: Requests must be submitted through the Orchestrator entry path.
+                    request_id: req-403
+                    agent: travel
+components:
+  schemas:
+    OrchestratorRequest:
+      type: object
+      required: [request_id, user_id, session_id, message]
+      properties:
+        request_id:
+          type: string
+        user_id:
+          type: string
+        session_id:
+          type: string
+        message:
+          type: string
+          minLength: 1
+        metadata:
+          type: object
+          additionalProperties: true
+    OrchestratorResponse:
+      type: object
+      required: [request_id, initial_handler, routed_to, status, response]
+      properties:
+        request_id:
+          type: string
+        initial_handler:
+          type: string
+          const: orchestrator
+        routed_to:
+          type: string
+          enum: [calendar, travel, dining, news, companion]
+        status:
+          type: string
+          enum: [succeeded, failed]
+        response:
+          type: object
+          additionalProperties: true
+        routing_record:
+          $ref: '#/components/schemas/RoutingRecord'
+    RoutingRecord:
+      type: object
+      required:
+        - request_id
+        - entry_path
+        - initial_handler
+        - routed_to
+        - status
+        - created_at
+      properties:
+        request_id:
+          type: string
+        entry_path:
+          type: string
+          const: orchestrator
+        initial_handler:
+          type: string
+          const: orchestrator
+        routed_to:
+          type: string
+          enum: [calendar, travel, dining, news, companion]
+        status:
+          type: string
+          enum: [succeeded, failed, rejected]
+        failure_code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [error_code, message, request_id]
+      properties:
+        error_code:
+          type: string
+        message:
+          type: string
+        request_id:
+          type: string
+    DirectAccessDeniedResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          required: [error_code, agent]
+          properties:
+            error_code:
+              type: string
+              const: direct_specialist_access_denied
+            message:
+              type: string
+              example: Requests must be submitted through the Orchestrator entry path.
+            agent:
+              type: string
+              enum: [calendar, travel, dining, news, companion]

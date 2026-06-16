@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Literal, TypedDict
 
-from src.models.state import ApprovalRequest, ApprovalResult, UserPreferences
+from src.models.state import (
+	ApprovalRequest,
+	ApprovalResult,
+	ErrorResponse,
+	RoutingDecision,
+	RoutingRecord,
+	SupportedDomain,
+	UserPreferences,
+)
 
 
 class MemoryPreferenceLoadedEvent(TypedDict):
@@ -34,6 +43,20 @@ class DomainActionRejectedEvent(TypedDict):
 	request_id: str
 	domain: str
 	action_type: str
+
+
+class RoutingDecisionComputedEvent(TypedDict):
+	event_name: Literal["orchestrator.intent.detected"]
+	decision: RoutingDecision
+
+
+class RoutingRecordLifecycleEvent(TypedDict):
+	event_name: str
+	record: RoutingRecord
+
+
+class DirectSpecialistAccessDeniedPayload(ErrorResponse):
+	agent: SupportedDomain
 
 
 def build_memory_preference_loaded_event(
@@ -90,4 +113,54 @@ def build_domain_action_rejected_event(
 		"domain": domain,
 		"action_type": action_type,
 	}
+
+
+def build_routing_decision_computed_event(
+	decision: RoutingDecision,
+) -> RoutingDecisionComputedEvent:
+	return {
+		"event_name": "orchestrator.intent.detected",
+		"decision": decision,
+	}
+
+
+def build_routing_record_lifecycle_event(
+	record: RoutingRecord,
+	*,
+	action: Literal["created", "updated"],
+	status: Literal["succeeded", "failed", "rejected"],
+) -> RoutingRecordLifecycleEvent:
+	return {
+		"event_name": f"orchestrator.routing_record.{action}.{status}",
+		"record": record,
+	}
+
+
+def build_direct_specialist_access_denied_payload(
+	*,
+	request_id: str,
+	agent: SupportedDomain,
+) -> DirectSpecialistAccessDeniedPayload:
+	return {
+		"error_code": "direct_specialist_access_denied",
+		"message": "Requests must be submitted through the Orchestrator entry path.",
+		"request_id": request_id,
+		"agent": agent,
+	}
+
+
+def build_downstream_failure_payload(
+	*,
+	request_id: str,
+	failure_code: str,
+) -> ErrorResponse:
+	return {
+		"error_code": failure_code,
+		"message": "The request entered through the Orchestrator but could not be completed. Please retry.",
+		"request_id": request_id,
+	}
+
+
+def now_iso() -> str:
+	return datetime.now(UTC).isoformat()
 

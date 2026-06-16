@@ -71,6 +71,13 @@ All requests enter through the Orchestrator Agent.
 
 No specialist agent is directly exposed to clients.
 
+Operational policy:
+
+* `POST /v1/assistant/requests` is the supported ingress path for accepted requests.
+* `POST /v1/agents/{agent}/invoke` is reserved for governance checks and always rejects direct specialist access with `403` and `error_code=direct_specialist_access_denied`.
+* Every accepted ingress request emits/updates a routing record where `initial_handler=orchestrator`.
+* If intent confidence is below the configured threshold, routing falls back to `companion`.
+
 Benefits:
 
 * Consistent user experience
